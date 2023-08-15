@@ -525,7 +525,7 @@ public class LottieCompositionFactory {
 
   @WorkerThread
   private static LottieResult<LottieComposition> fromZipStreamSyncInternal(Context context, ZipInputStream inputStream, @Nullable String cacheKey) {
-    LottieComposition composition = null;
+    List<LottieComposition> compositionList = new ArrayList<>();
     Map<String, Bitmap> images = new HashMap<>();
     Map<String, Typeface> fonts = new HashMap<>();
 
@@ -542,8 +542,10 @@ public class LottieCompositionFactory {
         } else if (entry.getName().equalsIgnoreCase("manifest.json")) { //ignore .lottie manifest
           inputStream.closeEntry();
         } else if (entry.getName().contains(".json")) {
+          LottieComposition composition = null;
           com.airbnb.lottie.parser.moshi.JsonReader reader = JsonReader.of(buffer(source(inputStream)));
           composition = LottieCompositionFactory.fromJsonReaderSyncInternal(reader, null, false).getValue();
+          compositionList.add(composition);
         } else if (entryName.contains(".png") || entryName.contains(".webp") || entryName.contains(".jpg") || entryName.contains(".jpeg")) {
           String[] splitName = entryName.split("/");
           String name = splitName[splitName.length - 1];
@@ -582,59 +584,66 @@ public class LottieCompositionFactory {
     }
 
 
-    if (composition == null) {
+    if (compositionList.isEmpty()) {
       return new LottieResult<>(new IllegalArgumentException("Unable to parse composition"));
     }
 
     for (Map.Entry<String, Bitmap> e : images.entrySet()) {
-      LottieImageAsset imageAsset = findImageAssetForFileName(composition, e.getKey());
-      if (imageAsset != null) {
-        imageAsset.setBitmap(Utils.resizeBitmapIfNeeded(e.getValue(), imageAsset.getWidth(), imageAsset.getHeight()));
+      for (LottieComposition composition: compositionList) {
+        LottieImageAsset imageAsset = findImageAssetForFileName(composition, e.getKey());
+        if (imageAsset != null) {
+          imageAsset.setBitmap(Utils.resizeBitmapIfNeeded(e.getValue(), imageAsset.getWidth(), imageAsset.getHeight()));
+        }
       }
     }
 
     for (Map.Entry<String, Typeface> e : fonts.entrySet()) {
       boolean found = false;
-      for (Font font : composition.getFonts().values()) {
-        if (font.getFamily().equals(e.getKey())) {
-          found = true;
-          font.setTypeface(e.getValue());
+      for (LottieComposition composition: compositionList) {
+        for (Font font : composition.getFonts().values()) {
+          if (font.getFamily().equals(e.getKey())) {
+            found = true;
+            font.setTypeface(e.getValue());
+          }
+        }
+        if (!found) {
+          Logger.warning("Parsed font for " + e.getKey() + " however it was not found in the animation.");
         }
       }
-      if (!found) {
-        Logger.warning("Parsed font for " + e.getKey() + " however it was not found in the animation.");
-      }
+
     }
 
     if (images.isEmpty()) {
-      for (Map.Entry<String, LottieImageAsset> entry : composition.getImages().entrySet()) {
-        LottieImageAsset asset = entry.getValue();
-        if (asset == null) {
-          return null;
-        }
-        String filename = asset.getFileName();
-        BitmapFactory.Options opts = new BitmapFactory.Options();
-        opts.inScaled = true;
-        opts.inDensity = 160;
-
-        if (filename.startsWith("data:") && filename.indexOf("base64,") > 0) {
-          // Contents look like a base64 data URI, with the format data:image/png;base64,<data>.
-          byte[] data;
-          try {
-            data = Base64.decode(filename.substring(filename.indexOf(',') + 1), Base64.DEFAULT);
-          } catch (IllegalArgumentException e) {
-            Logger.warning("data URL did not have correct base64 format.", e);
+      for (LottieComposition composition: compositionList) {
+        for (Map.Entry<String, LottieImageAsset> entry : composition.getImages().entrySet()) {
+          LottieImageAsset asset = entry.getValue();
+          if (asset == null) {
             return null;
           }
-          asset.setBitmap(BitmapFactory.decodeByteArray(data, 0, data.length, opts));
+          String filename = asset.getFileName();
+          BitmapFactory.Options opts = new BitmapFactory.Options();
+          opts.inScaled = true;
+          opts.inDensity = 160;
+
+          if (filename.startsWith("data:") && filename.indexOf("base64,") > 0) {
+            // Contents look like a base64 data URI, with the format data:image/png;base64,<data>.
+            byte[] data;
+            try {
+              data = Base64.decode(filename.substring(filename.indexOf(',') + 1), Base64.DEFAULT);
+            } catch (IllegalArgumentException e) {
+              Logger.warning("data URL did not have correct base64 format.", e);
+              return null;
+            }
+            asset.setBitmap(BitmapFactory.decodeByteArray(data, 0, data.length, opts));
+          }
         }
       }
     }
 
     if (cacheKey != null) {
-      LottieCompositionCache.getInstance().put(cacheKey, composition);
+      LottieCompositionCache.getInstance().put(cacheKey, compositionList.get(0));
     }
-    return new LottieResult<>(composition);
+    return new LottieResult<>(compositionList.get(0));
   }
 
   /**
