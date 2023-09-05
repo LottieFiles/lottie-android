@@ -37,4 +37,13 @@ public class AnimationsItem{
 	public float getSpeed(){
 		return speed;
 	}
+
+  @Override public String toString() {
+    return "AnimationsItem{" +
+        "themeColor='" + themeColor + '\'' +
+        ", loop=" + loop +
+        ", id='" + id + '\'' +
+        ", speed=" + speed +
+        '}';
+  }
 }

@@ -39,4 +39,13 @@ public class DotLottieManifest{
 	public String getVersion(){
 		return version;
 	}
+
+  @Override public String toString() {
+    return "DotLottieManifest{" +
+        "author='" + author + '\'' +
+        ", animations=" + animations +
+        ", generator='" + generator + '\'' +
+        ", version='" + version + '\'' +
+        '}';
+  }
 }

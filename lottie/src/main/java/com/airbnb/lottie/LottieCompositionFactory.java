@@ -1,9 +1,5 @@
 package com.airbnb.lottie;
 
-import static com.airbnb.lottie.utils.Utils.closeQuietly;
-import static okio.Okio.buffer;
-import static okio.Okio.source;
-
 import android.content.Context;
 import android.content.res.Configuration;
 import android.content.res.Resources;
@@ -11,12 +7,9 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Typeface;
 import android.util.Base64;
-import android.util.Log;
-
 import androidx.annotation.Nullable;
 import androidx.annotation.RawRes;
 import androidx.annotation.WorkerThread;
-
 import com.airbnb.lottie.model.DotLottieManifest;
 import com.airbnb.lottie.model.Font;
 import com.airbnb.lottie.model.LottieCompositionCache;
@@ -26,7 +19,8 @@ import com.airbnb.lottie.parser.LottieCompositionMoshiParser;
 import com.airbnb.lottie.parser.moshi.JsonReader;
 import com.airbnb.lottie.utils.Logger;
 import com.airbnb.lottie.utils.Utils;
-
+import okio.BufferedSource;
+import okio.Okio;
 import org.json.JSONObject;
 
 import java.io.ByteArrayInputStream;
@@ -44,12 +38,12 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
-import okio.BufferedSource;
-import okio.Okio;
+import static com.airbnb.lottie.utils.Utils.closeQuietly;
+import static okio.Okio.buffer;
+import static okio.Okio.source;
 
 /**
  * Helpers to create or cache a LottieComposition.
@@ -543,10 +537,8 @@ public class LottieCompositionFactory {
         if (entryName.contains("__MACOSX")) {
           inputStream.closeEntry();
         } else if (entry.getName().equalsIgnoreCase("manifest.json")) { //ignore .lottie manifest
-          Log.d("JJ","Manifest File " + buffer(source(inputStream)).readUtf8());
           com.airbnb.lottie.parser.moshi.JsonReader reader = JsonReader.of(buffer(source(inputStream)));
           DotLottieManifest manifest = DotLottieManifestParser.parse(reader);
-          Log.d("JJ","Manifest Parser " + manifest.toString());
           inputStream.closeEntry();
         } else if (entry.getName().contains(".json")) {
           LottieComposition composition = null;
