@@ -11,14 +11,17 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Typeface;
 import android.util.Base64;
+import android.util.Log;
 
 import androidx.annotation.Nullable;
 import androidx.annotation.RawRes;
 import androidx.annotation.WorkerThread;
 
+import com.airbnb.lottie.model.DotLottieManifest;
 import com.airbnb.lottie.model.Font;
 import com.airbnb.lottie.model.LottieCompositionCache;
 import com.airbnb.lottie.network.NetworkCache;
+import com.airbnb.lottie.parser.DotLottieManifestParser;
 import com.airbnb.lottie.parser.LottieCompositionMoshiParser;
 import com.airbnb.lottie.parser.moshi.JsonReader;
 import com.airbnb.lottie.utils.Logger;
@@ -540,6 +543,10 @@ public class LottieCompositionFactory {
         if (entryName.contains("__MACOSX")) {
           inputStream.closeEntry();
         } else if (entry.getName().equalsIgnoreCase("manifest.json")) { //ignore .lottie manifest
+          Log.d("JJ","Manifest File " + buffer(source(inputStream)).readUtf8());
+          com.airbnb.lottie.parser.moshi.JsonReader reader = JsonReader.of(buffer(source(inputStream)));
+          DotLottieManifest manifest = DotLottieManifestParser.parse(reader);
+          Log.d("JJ","Manifest Parser " + manifest.toString());
           inputStream.closeEntry();
         } else if (entry.getName().contains(".json")) {
           LottieComposition composition = null;
