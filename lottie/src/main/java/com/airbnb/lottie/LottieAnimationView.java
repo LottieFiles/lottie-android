@@ -467,7 +467,7 @@ import java.util.Set;
           ? LottieCompositionFactory.fromRawResSync(getContext(), rawRes) : LottieCompositionFactory.fromRawResSync(getContext(), rawRes, null), true);
     } else {
       return cacheComposition ?
-          LottieCompositionFactory.fromRawRes(getContext(), rawRes) : LottieCompositionFactory.fromRawRes(getContext(), rawRes, null);
+          LottieCompositionFactory.fromRawRes(getContext(), rawRes) : LottieCompositionFactory.fromRawRes(getContext(), rawRes, (String) null);
     }
   }
 
@@ -483,7 +483,7 @@ import java.util.Set;
           LottieCompositionFactory.fromAssetSync(getContext(), assetName) : LottieCompositionFactory.fromAssetSync(getContext(), assetName, null), true);
     } else {
       return cacheComposition ?
-          LottieCompositionFactory.fromAsset(getContext(), assetName) : LottieCompositionFactory.fromAsset(getContext(), assetName, null);
+          LottieCompositionFactory.fromAsset(getContext(), assetName) : LottieCompositionFactory.fromAsset(getContext(), assetName, (String) null);
     }
   }
 
@@ -533,7 +533,7 @@ import java.util.Set;
    */
   public void setAnimationFromUrl(String url) {
     LottieTask<LottieComposition> task = cacheComposition ?
-        LottieCompositionFactory.fromUrl(getContext(), url) : LottieCompositionFactory.fromUrl(getContext(), url, null);
+        LottieCompositionFactory.fromUrl(getContext(), url) : LottieCompositionFactory.fromUrl(getContext(), url, (String) null);
     setCompositionTask(task);
   }
 

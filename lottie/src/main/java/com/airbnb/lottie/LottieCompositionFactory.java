@@ -115,6 +115,10 @@ public class LottieCompositionFactory {
     return fromUrl(context, url, "url_" + url);
   }
 
+  public static LottieTask<LottieComposition> fromUrl(final Context context, final String url, @Nullable Integer index) {
+    return fromUrl(context, url, "url_" + url,index);
+  }
+
   /**
    * Fetch an animation from an http url. Once it is downloaded once, Lottie will cache the file to disk for
    * future use. Because of this, you may call `fromUrl` ahead of time to warm the cache if you think you
@@ -123,6 +127,16 @@ public class LottieCompositionFactory {
   public static LottieTask<LottieComposition> fromUrl(final Context context, final String url, @Nullable final String cacheKey) {
     return cache(cacheKey, () -> {
       LottieResult<LottieComposition> result = L.networkFetcher(context).fetchSync(context, url, cacheKey);
+      if (cacheKey != null && result.getValue() != null) {
+        LottieCompositionCache.getInstance().put(cacheKey, result.getValue());
+      }
+      return result;
+    }, null);
+  }
+
+  public static LottieTask<LottieComposition> fromUrl(final Context context, final String url, @Nullable final String cacheKey, @Nullable Integer index) {
+    return cache(cacheKey, () -> {
+      LottieResult<LottieComposition> result = L.networkFetcher(context).fetchSync(context, url, cacheKey,index);
       if (cacheKey != null && result.getValue() != null) {
         LottieCompositionCache.getInstance().put(cacheKey, result.getValue());
       }
@@ -173,6 +187,11 @@ public class LottieCompositionFactory {
     return fromAsset(context, fileName, cacheKey);
   }
 
+  public static LottieTask<LottieComposition> fromAsset(Context context, final String fileName ,@Nullable Integer index) {
+    String cacheKey = "asset_" + fileName;
+    return fromAsset(context, fileName, cacheKey,index);
+  }
+
   /**
    * Parse an animation from src/main/assets. It is recommended to use {@link #fromRawRes(Context, int)} instead.
    * The asset file name will be used as a cache key so future usages won't have to parse the json again.
@@ -186,6 +205,12 @@ public class LottieCompositionFactory {
     // Prevent accidentally leaking an Activity.
     final Context appContext = context.getApplicationContext();
     return cache(cacheKey, () -> fromAssetSync(appContext, fileName, cacheKey), null);
+  }
+
+  public static LottieTask<LottieComposition> fromAsset(Context context, final String fileName, @Nullable final String cacheKey, @Nullable Integer index) {
+    // Prevent accidentally leaking an Activity.
+    final Context appContext = context.getApplicationContext();
+    return cache(cacheKey, () -> fromAssetSync(appContext, fileName, cacheKey,index), null);
   }
 
   /**
@@ -214,13 +239,18 @@ public class LottieCompositionFactory {
    */
   @WorkerThread
   public static LottieResult<LottieComposition> fromAssetSync(Context context, String fileName, @Nullable String cacheKey) {
+    return fromAssetSync(context,fileName,cacheKey,null);
+  }
+
+  @WorkerThread
+  public static LottieResult<LottieComposition> fromAssetSync(Context context, String fileName, @Nullable String cacheKey, @Nullable Integer index) {
     final LottieComposition cachedComposition = cacheKey == null ? null : LottieCompositionCache.getInstance().get(cacheKey);
     if (cachedComposition != null) {
       return new LottieResult<>(cachedComposition);
     }
     try {
       if (fileName.endsWith(".zip") || fileName.endsWith(".lottie")) {
-        return fromZipStreamSync(context, new ZipInputStream(context.getAssets().open(fileName)), cacheKey);
+        return fromZipStreamSync(context, new ZipInputStream(context.getAssets().open(fileName)), cacheKey,index);
       }
       return fromJsonInputStreamSync(context.getAssets().open(fileName), cacheKey);
     } catch (IOException e) {
@@ -242,6 +272,10 @@ public class LottieCompositionFactory {
     return fromRawRes(context, rawRes, rawResCacheKey(context, rawRes));
   }
 
+  public static LottieTask<LottieComposition> fromRawRes(Context context, @RawRes final int rawRes,@Nullable final Integer index) {
+    return fromRawRes(context, rawRes, rawResCacheKey(context, rawRes), index);
+  }
+
   /**
    * Parse an animation from raw/res. This is recommended over putting your animation in assets because
    * it uses a hard reference to R.
@@ -253,12 +287,17 @@ public class LottieCompositionFactory {
    */
   public static LottieTask<LottieComposition> fromRawRes(Context context, @RawRes final int rawRes, @Nullable final String cacheKey) {
     // Prevent accidentally leaking an Activity.
+    return fromRawRes(context,rawRes,cacheKey,null);
+  }
+
+  public static LottieTask<LottieComposition> fromRawRes(Context context, @RawRes final int rawRes, @Nullable final String cacheKey, @Nullable Integer index) {
+    // Prevent accidentally leaking an Activity.
     final WeakReference<Context> contextRef = new WeakReference<>(context);
     final Context appContext = context.getApplicationContext();
     return cache(cacheKey, () -> {
       @Nullable Context originalContext = contextRef.get();
       Context context1 = originalContext != null ? originalContext : appContext;
-      return fromRawResSync(context1, rawRes, cacheKey);
+      return fromRawResSync(context1, rawRes, cacheKey,index);
     }, null);
   }
 
@@ -287,6 +326,11 @@ public class LottieCompositionFactory {
    */
   @WorkerThread
   public static LottieResult<LottieComposition> fromRawResSync(Context context, @RawRes int rawRes, @Nullable String cacheKey) {
+    return fromRawResSync(context,rawRes,cacheKey,null);
+  }
+
+  @WorkerThread
+  public static LottieResult<LottieComposition> fromRawResSync(Context context, @RawRes int rawRes, @Nullable String cacheKey, @Nullable final Integer index) {
     final LottieComposition cachedComposition = cacheKey == null ? null : LottieCompositionCache.getInstance().get(cacheKey);
     if (cachedComposition != null) {
       return new LottieResult<>(cachedComposition);
@@ -294,7 +338,7 @@ public class LottieCompositionFactory {
     try {
       BufferedSource source = Okio.buffer(source(context.getResources().openRawResource(rawRes)));
       if (isZipCompressed(source)) {
-        return fromZipStreamSync(context, new ZipInputStream(source.inputStream()), cacheKey);
+        return fromZipStreamSync(context, new ZipInputStream(source.inputStream()), cacheKey, index);
       }
       return fromJsonInputStreamSync(source.inputStream(), cacheKey);
     } catch (Resources.NotFoundException e) {
@@ -482,6 +526,10 @@ public class LottieCompositionFactory {
     return fromZipStreamSync(null, inputStream, cacheKey, close);
   }
 
+  public static LottieResult<LottieComposition> fromZipStreamSync(ZipInputStream inputStream, @Nullable String cacheKey, boolean close, @Nullable Integer index) {
+    return fromZipStreamSync(null, inputStream, cacheKey, close,index);
+  }
+
   /**
    * Parses a zip input stream into a Lottie composition.
    * Your zip file should just be a folder with your json file and images zipped together.
@@ -499,6 +547,11 @@ public class LottieCompositionFactory {
     return fromZipStreamSync(context, inputStream, cacheKey, true);
   }
 
+  @WorkerThread
+  public static LottieResult<LottieComposition> fromZipStreamSync(@Nullable Context context, ZipInputStream inputStream, @Nullable String cacheKey, @Nullable Integer index) {
+    return fromZipStreamSync(context, inputStream, cacheKey, true,index);
+  }
+
   /**
    * Parses a zip input stream into a Lottie composition.
    * Your zip file should just be a folder with your json file and images zipped together.
@@ -512,7 +565,7 @@ public class LottieCompositionFactory {
   public static LottieResult<LottieComposition> fromZipStreamSync(@Nullable Context context, ZipInputStream inputStream,
       @Nullable String cacheKey, boolean close) {
     try {
-      return fromZipStreamSyncInternal(context, inputStream, cacheKey);
+      return fromZipStreamSyncInternal(context, inputStream, cacheKey,null);
     } finally {
       if (close) {
         closeQuietly(inputStream);
@@ -521,7 +574,19 @@ public class LottieCompositionFactory {
   }
 
   @WorkerThread
-  private static LottieResult<LottieComposition> fromZipStreamSyncInternal(Context context, ZipInputStream inputStream, @Nullable String cacheKey) {
+  public static LottieResult<LottieComposition> fromZipStreamSync(@Nullable Context context, ZipInputStream inputStream,
+      @Nullable String cacheKey, boolean close, @Nullable Integer index) {
+    try {
+      return fromZipStreamSyncInternal(context, inputStream, cacheKey,index);
+    } finally {
+      if (close) {
+        closeQuietly(inputStream);
+      }
+    }
+  }
+
+  @WorkerThread
+  private static LottieResult<LottieComposition> fromZipStreamSyncInternal(Context context, ZipInputStream inputStream, @Nullable String cacheKey, @Nullable Integer index) {
     List<LottieComposition> compositionList = new ArrayList<>();
     Map<String, Bitmap> images = new HashMap<>();
     Map<String, Typeface> fonts = new HashMap<>();

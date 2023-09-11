@@ -45,6 +45,19 @@ public class NetworkFetcher {
     return fetchFromNetwork(context, url, cacheKey);
   }
 
+  @NonNull
+  @WorkerThread
+  public LottieResult<LottieComposition> fetchSync(Context context, @NonNull String url, @Nullable String cacheKey, @Nullable Integer index) {
+    LottieComposition result = fetchFromCache(context, url, cacheKey,index);
+    if (result != null) {
+      return new LottieResult<>(result);
+    }
+
+    Logger.debug("Animation for " + url + " not found in cache. Fetching from network.");
+
+    return fetchFromNetwork(context, url, cacheKey);
+  }
+
   @Nullable
   @WorkerThread
   private LottieComposition fetchFromCache(Context context, @NonNull String url, @Nullable String cacheKey) {
@@ -61,6 +74,31 @@ public class NetworkFetcher {
     LottieResult<LottieComposition> result;
     if (extension == FileExtension.ZIP) {
       result = LottieCompositionFactory.fromZipStreamSync(context, new ZipInputStream(inputStream), cacheKey);
+    } else {
+      result = LottieCompositionFactory.fromJsonInputStreamSync(inputStream, cacheKey);
+    }
+    if (result.getValue() != null) {
+      return result.getValue();
+    }
+    return null;
+  }
+
+  @Nullable
+  @WorkerThread
+  private LottieComposition fetchFromCache(Context context, @NonNull String url, @Nullable String cacheKey, @Nullable Integer index) {
+    if (cacheKey == null || networkCache == null) {
+      return null;
+    }
+    Pair<FileExtension, InputStream> cacheResult = networkCache.fetch(url);
+    if (cacheResult == null) {
+      return null;
+    }
+
+    FileExtension extension = cacheResult.first;
+    InputStream inputStream = cacheResult.second;
+    LottieResult<LottieComposition> result;
+    if (extension == FileExtension.ZIP) {
+      result = LottieCompositionFactory.fromZipStreamSync(context, new ZipInputStream(inputStream), cacheKey,index);
     } else {
       result = LottieCompositionFactory.fromJsonInputStreamSync(inputStream, cacheKey);
     }
